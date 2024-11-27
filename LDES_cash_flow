@@ -1,0 +1,82 @@
+%Exploring LDES cost-performance in the discounted cash flow framework.
+%good luck
+
+clc,clear
+
+%fix inputs
+AE=0.05;%$/kWh-cycle
+Rp=50;%$/kW-y
+r=7.5/100;%%
+%L=800;%cycle life
+Pc=0.025;%$/kWh-cycle
+FOM=43.05;%$/kW-y
+CRe=0;%$/kWh
+VOM=0.002;%$/kWh-cycle
+
+% Changed inputs
+d_values = [3, 10, 50, 100, 500, 1000]; % different durations (hours)
+RTE_values = [0.5,0.7,0.9]; % different Round-Trip Efficiencies (50%, 70%, 90%)
+
+% Initialize Excel filename
+filename = 'results_for_cost_performance.xlsx';
+
+% CEth from 0.01 to 1000
+CEth = [0.01:0.1:1000];
+
+% Initialize figure for plotting
+figure;
+hold on;
+
+
+% Loop through different values of d and RTE
+for d = d_values
+    for RTE = RTE_values
+        effiD = sqrt(RTE); % Efficiency degradation
+        AFC=4380/d;
+        nc=floor(0.7*AFC);%365*24/d/2);
+        T=20;%floor(L/nc);%
+        L=T*nc;
+        
+        % Cash flow equation calculation
+        A = 0;
+        B = 0;
+        for t = 1:1:T
+            A=A+(1+r)^(-t)*(AE*nc+Rp*(d^(-1)));
+            B=B+(1+r)^(-t)*(nc*Pc*(RTE^(-1)-1)+nc*VOM+d^(-1)*FOM);
+            %t=t+1;
+            %A = A + (1 + r)^(-t) * (AE * nc + Rp * d^(-1));
+            %B = B + (1 + r)^(-t) * (nc * Pc * (RTE^(-1) - 1) + nc * VOM + d^(-1) * FOM);
+        end
+        C=CRe*((1+r)^(-L/nc));
+        %C = CRe * ((1 + r)^(-L/nc));
+        D = CEth / effiD;
+        Cp = (A - B - C - D) * d;
+        
+        % 
+        Cp(Cp < 0) = 0.1; % 
+        
+        
+        % Write data to Excel
+        sheetname = ['d=', num2str(d), ', RTE=', num2str(RTE*100), '%'];
+        xlswrite(filename, CEth', sheetname, 'A1');
+        xlswrite(filename, Cp', sheetname, 'B1');
+        
+        % Plot the results
+        plot(CEth, Cp, 'DisplayName', ['d = ', num2str(d), ', RTE = ', num2str(RTE*100), '%']);
+   
+    end
+end
+
+
+% Add labels and title
+xlabel('CEth ($/MWh)');
+ylabel('Cp ($)');
+title('Cost Performance for Different d and RTE Values');
+set(gca, 'XScale', 'log');  % Log scale for x-axis
+set(gca, 'YScale', 'log');  % Log scale for y-axis
+legend('show');  % Show the legend
+grid on;
+
+hold off;
+
+disp('Data written to Excel successfully.');
